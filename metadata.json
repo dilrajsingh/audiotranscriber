@@ -1,0 +1,7 @@
+{
+  "name": "AudioTranscribe Pro",
+  "description": "A high-performance audio transcription and speaker diarization tool powered by Gemini, allowing users to upload audio files and receive structured, timestamped transcripts with multi-speaker detection.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

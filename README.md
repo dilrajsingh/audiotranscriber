@@ -19,3 +19,6 @@ View your app in AI Studio: https://ai.studio/apps/drive/1FPvUUOPHttElGxl9dhhMXM
 3. Run the app:
    `npm run dev`
 # audiotranscriber
+
+
+Backend: Use GCP Cloud Run. It will use the Dockerfile automatically. Set your API_KEY in the "Environment Variables" section of the Cloud Run console.
