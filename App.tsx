@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { TranscriptionApp } from './components/TranscriptionApp';
 import { LoginView } from './components/LoginView';
-import { Headphones, Info, LogOut, Coins, PlusCircle } from 'lucide-react';
+import { Headphones, LogOut, Coins, PlusCircle } from 'lucide-react';
 import { User } from './types';
 
 const App: React.FC = () => {
@@ -35,6 +35,15 @@ const App: React.FC = () => {
     localStorage.setItem('audio_transcribe_user', JSON.stringify(updatedUser));
     setUser(updatedUser);
     alert("Payment Successful! 500 Minutes added to your balance.");
+  };
+
+  const handleCreditsSpent = (minutes: number) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const updatedUser = { ...prev, credits: Math.max(0, prev.credits - minutes) };
+      localStorage.setItem('audio_transcribe_user', JSON.stringify(updatedUser));
+      return updatedUser;
+    });
   };
 
   if (!user) {
@@ -90,7 +99,7 @@ const App: React.FC = () => {
       </header>
 
       <main className="flex-1 w-full max-w-6xl mx-auto px-4 py-8">
-        <TranscriptionApp userCredits={user.credits} />
+        <TranscriptionApp userCredits={user.credits} onCreditsSpent={handleCreditsSpent} />
       </main>
 
       <footer className="border-t border-slate-200 py-6 bg-white">

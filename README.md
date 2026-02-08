@@ -1,24 +1,39 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# AudioTranscribe Pro
 
-# Run and deploy your AI Studio app
+React + Vite frontend with an Express backend for secure Gemini audio transcription.
 
-This contains everything you need to run your app locally.
+## Prerequisites
 
-View your app in AI Studio: https://ai.studio/apps/drive/1FPvUUOPHttElGxl9dhhMXMUuOtk0iVzV
+- Node.js 18+
+- npm
+
+## Local Setup
+
+1. Install frontend dependencies:
+   `npm install`
+2. Install backend dependencies:
+   `cd backend && npm install`
+3. Configure frontend env in `.env.local`:
+   - `GEMINI_API_KEY=...`
+   - `USE_BACKEND=true`
+   - `BACKEND_ENDPOINT=http://localhost:3001/api/transcribe`
+4. Configure backend env in `backend/.env` (copy from `backend/.env.example`):
+   - `GEMINI_API_KEY=...`
+   - `FRONTEND_URL=http://localhost:3000`
+   - `PORT=3001`
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
+1. Start backend:
+   `cd backend && npm run dev`
+2. Start frontend (new terminal):
    `npm run dev`
-# audiotranscriber
 
+Frontend: `http://localhost:3000`  
+Backend health check: `http://localhost:3001/health`
 
-Backend: Use GCP Cloud Run. It will use the Dockerfile automatically. Set your API_KEY in the "Environment Variables" section of the Cloud Run console.
+## Deployment Notes (Cloud Run backend)
+
+- Set `GEMINI_API_KEY` in Cloud Run environment variables.
+- Set `FRONTEND_URL` to your deployed frontend origin.
+- Cloud Run provides `PORT` automatically.

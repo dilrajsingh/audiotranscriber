@@ -8,7 +8,7 @@ require('dotenv').config();
 
 const app = express();
 // Cloud Run and Heroku provide the port via process.env.PORT
-const PORT = process.env.PORT || 8080;
+const PORT = Number(process.env.PORT) || 3001;
 
 app.use(helmet());
 
@@ -58,18 +58,37 @@ const limiter = rateLimit({
   message: { error: 'Too many requests, please try again later.' }
 });
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 app.post('/api/transcribe', authenticate, limiter, async (req, res) => {
   try {
     const { audioData, mimeType, options, durationMins } = req.body;
+
+    if (!ai) {
+      return res.status(500).json({ error: 'Server missing GEMINI_API_KEY/API_KEY.' });
+    }
+
+    if (!audioData || !mimeType) {
+      return res.status(400).json({ error: 'Missing audioData or mimeType.' });
+    }
+
+    const requestedDuration = Number(durationMins);
+    if (!Number.isFinite(requestedDuration) || requestedDuration <= 0) {
+      return res.status(400).json({ error: 'Invalid durationMins.' });
+    }
     
-    if (req.user.credits < durationMins) {
+    if (req.user.credits < requestedDuration) {
       return res.status(402).json({ error: 'Insufficient credits.' });
     }
 
+    const speakerDirective = options?.speakerCount === 'auto'
+      ? 'Detect all unique speakers automatically.'
+      : `There are exactly ${Number(options?.speakerCount || 1)} speakers.`;
+
     const prompt = `
       Analyze the audio. Perform speaker diarization and transcription.
+      ${speakerDirective}
       Return a JSON object with:
       - speakersDetected (number)
       - segments (array of {start, end, speaker, text})
@@ -86,8 +105,9 @@ app.post('/api/transcribe', authenticate, limiter, async (req, res) => {
       config: { responseMimeType: "application/json" }
     });
 
-    req.user.credits -= durationMins;
-    res.json(JSON.parse(response.text));
+    req.user.credits -= requestedDuration;
+    const payload = JSON.parse(response.text || '{"speakersDetected":0,"segments":[]}');
+    res.json(payload);
   } catch (error) {
     console.error('Transcription Error:', error);
     res.status(500).json({ error: 'AI Processing failed' });

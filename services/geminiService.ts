@@ -5,21 +5,27 @@ import { TranscriptionResponse, TranscriptionOptions, ProcessingStage, Transcrip
 const MAX_GAP_TO_MERGE = 0.4;
 
 /**
- * Toggle this to true if you want to use the backend server.
+ * Defaults to backend mode for production safety.
+ * Set USE_BACKEND=false in .env.local to run direct browser mode.
  */
-const USE_BACKEND = false; 
-const BACKEND_ENDPOINT = 'http://localhost:3001/api/transcribe';
+const USE_BACKEND = (process.env.USE_BACKEND ?? 'true').toLowerCase() !== 'false';
+const BACKEND_ENDPOINT = process.env.BACKEND_ENDPOINT || 'http://localhost:3001/api/transcribe';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.API_KEY;
 
 export const processAudioWithGemini = async (
   base64Data: string,
   mimeType: string,
   options: TranscriptionOptions,
-  onStageChange: (stage: ProcessingStage) => void
+  onStageChange: (stage: ProcessingStage) => void,
+  durationMins: number
 ): Promise<TranscriptionResponse> => {
   
   if (USE_BACKEND) {
     onStageChange('diarizing');
     const token = localStorage.getItem('audio_transcribe_token');
+    if (!token) {
+      throw new Error('Missing auth token. Please log in again.');
+    }
     
     const response = await fetch(BACKEND_ENDPOINT, {
       method: 'POST',
@@ -27,20 +33,32 @@ export const processAudioWithGemini = async (
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}` // This ensures the backend knows WHO is asking
       },
-      body: JSON.stringify({ audioData: base64Data, mimeType, options })
+      body: JSON.stringify({ audioData: base64Data, mimeType, options, durationMins })
     });
     
     if (response.status === 401) {
        throw new Error('Your session has expired. Please log in again.');
     }
+
+    if (response.status === 402) {
+      throw new Error('Insufficient credits for this file.');
+    }
     
-    if (!response.ok) throw new Error('Backend processing failed');
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      throw new Error(payload?.error || 'Backend processing failed');
+    }
+
     const result = await response.json();
     return finalizeResult(result, onStageChange);
   }
 
   // --- Direct Client Logic (Simplified for brevity) ---
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  if (!GEMINI_API_KEY) {
+    throw new Error("Missing GEMINI_API_KEY for direct browser mode.");
+  }
+
+  const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
   onStageChange('diarizing');
   
   const speakerDirective = options.speakerCount === 'auto' 

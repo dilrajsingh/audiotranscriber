@@ -11,8 +11,10 @@ export default defineConfig(({ mode }) => {
       },
       plugins: [react()],
       define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
+        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY || ''),
+        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || ''),
+        'process.env.USE_BACKEND': JSON.stringify(env.USE_BACKEND || 'true'),
+        'process.env.BACKEND_ENDPOINT': JSON.stringify(env.BACKEND_ENDPOINT || 'http://localhost:3001/api/transcribe')
       },
       resolve: {
         alias: {

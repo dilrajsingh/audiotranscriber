@@ -5,9 +5,10 @@ import { Upload, FileAudio, X } from 'lucide-react';
 interface FileUploaderProps {
   onFileSelect: (file: File) => void;
   selectedFile: File | null;
+  onClear: () => void;
 }
 
-export const FileUploader: React.FC<FileUploaderProps> = ({ onFileSelect, selectedFile }) => {
+export const FileUploader: React.FC<FileUploaderProps> = ({ onFileSelect, selectedFile, onClear }) => {
   const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -61,7 +62,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileSelect, select
           <button 
             onClick={() => {
                 if (inputRef.current) inputRef.current.value = '';
-                // Since selectedFile is handled by parent, we just let parent know it's gone
+                onClear();
             }}
             className="p-2 text-indigo-300 hover:text-indigo-600 hover:bg-indigo-100 rounded-full transition-colors"
           >

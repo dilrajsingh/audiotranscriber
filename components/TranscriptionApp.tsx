@@ -9,9 +9,10 @@ import { Settings2, Users, Clock, Info, AlertTriangle } from 'lucide-react';
 
 interface TranscriptionAppProps {
   userCredits: number;
+  onCreditsSpent: (minutes: number) => void;
 }
 
-export const TranscriptionApp: React.FC<TranscriptionAppProps> = ({ userCredits }) => {
+export const TranscriptionApp: React.FC<TranscriptionAppProps> = ({ userCredits, onCreditsSpent }) => {
   const [stage, setStage] = useState<ProcessingStage>('idle');
   const [error, setError] = useState<string | null>(null);
   const [options, setOptions] = useState<TranscriptionOptions>({
@@ -26,19 +27,40 @@ export const TranscriptionApp: React.FC<TranscriptionAppProps> = ({ userCredits 
     setSelectedFile(file);
     setResult(null);
     setError(null);
+    setFileDuration(0);
     
     // Get audio duration
     const audio = new Audio();
-    audio.src = URL.createObjectURL(file);
+    const objectUrl = URL.createObjectURL(file);
+    audio.src = objectUrl;
     audio.onloadedmetadata = () => {
       setFileDuration(Math.ceil(audio.duration / 60)); // Round up to nearest minute
+      URL.revokeObjectURL(objectUrl);
+    };
+    audio.onerror = () => {
+      setError('Could not read audio metadata. Please try another file.');
+      URL.revokeObjectURL(objectUrl);
     };
   };
 
+  const handleFileClear = () => {
+    setSelectedFile(null);
+    setFileDuration(0);
+    setError(null);
+    setResult(null);
+    setStage('idle');
+  };
+
   const hasEnoughCredits = userCredits >= fileDuration;
+  const isDurationReady = fileDuration > 0;
+  const canStart =
+    !!selectedFile &&
+    isDurationReady &&
+    hasEnoughCredits &&
+    (stage === 'idle' || stage === 'completed' || stage === 'error');
 
   const startProcessing = async () => {
-    if (!selectedFile || !hasEnoughCredits) return;
+    if (!selectedFile || !isDurationReady || !hasEnoughCredits) return;
 
     try {
       setError(null);
@@ -56,14 +78,11 @@ export const TranscriptionApp: React.FC<TranscriptionAppProps> = ({ userCredits 
         fileData.split(',')[1],
         selectedFile.type,
         options,
-        (currentStage) => setStage(currentStage)
+        (currentStage) => setStage(currentStage),
+        fileDuration
       );
 
-      // Deduct locally for immediate UI feedback (In prod, backend does this)
-      const savedUser = JSON.parse(localStorage.getItem('audio_transcribe_user') || '{}');
-      savedUser.credits = Math.max(0, savedUser.credits - fileDuration);
-      localStorage.setItem('audio_transcribe_user', JSON.stringify(savedUser));
-      // Note: Re-sync state would usually happen here via a context provider or re-render
+      onCreditsSpent(fileDuration);
 
       setResult(transcriptionResult);
       setStage('completed');
@@ -120,7 +139,7 @@ export const TranscriptionApp: React.FC<TranscriptionAppProps> = ({ userCredits 
           </div>
 
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <FileUploader onFileSelect={handleFileSelect} selectedFile={selectedFile} />
+            <FileUploader onFileSelect={handleFileSelect} selectedFile={selectedFile} onClear={handleFileClear} />
             
             {selectedFile && !hasEnoughCredits && (
               <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl flex gap-3">
@@ -135,14 +154,20 @@ export const TranscriptionApp: React.FC<TranscriptionAppProps> = ({ userCredits 
 
             <button
               onClick={startProcessing}
-              disabled={!selectedFile || !hasEnoughCredits || (stage !== 'idle' && stage !== 'completed' && stage !== 'error')}
+              disabled={!canStart}
               className={`w-full mt-6 py-3 px-4 rounded-xl font-semibold text-white transition-all shadow-md active:scale-[0.98] ${
-                !selectedFile || !hasEnoughCredits || (stage !== 'idle' && stage !== 'completed' && stage !== 'error')
+                !canStart
                   ? 'bg-slate-300 cursor-not-allowed shadow-none'
                   : 'bg-indigo-600 hover:bg-indigo-700'
               }`}
             >
-              {!hasEnoughCredits && selectedFile ? 'Insufficient Credits' : stage === 'idle' || stage === 'completed' || stage === 'error' ? 'Start Transcription' : 'Processing...'}
+              {!isDurationReady && selectedFile
+                ? 'Reading Audio Metadata...'
+                : !hasEnoughCredits && selectedFile
+                  ? 'Insufficient Credits'
+                  : stage === 'idle' || stage === 'completed' || stage === 'error'
+                    ? 'Start Transcription'
+                    : 'Processing...'}
             </button>
           </div>
         </div>
